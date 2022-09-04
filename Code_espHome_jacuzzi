@@ -1,0 +1,418 @@
+#------------------------------
+#-- test-pompe1.yaml
+#-- Petit code pour tester la régulation de la pompe pour chauffer la piscine d'Antoine
+#-- si la T aller - T retour est > que T consigne, alors allume la bonne pompe
+#-- tous les paramètres de configuration se trouvent en input number directement sur l'ESPhome !
+#-- pour l'instant ce n'est qu'une maquette de démo !
+#--
+#-- pinout mini-d1: https://docs.google.com/document/d/1GOp2zN0aFk80cv2Hz6DmlEwY84OPwVK38da-KSO77zw/edit#heading=h.ohz2baooedzi
+#-- zf220803.1645
+#--
+
+esphome:
+  name: test-pompe1
+esp8266:
+  board: esp01_1m
+  restore_from_flash: false
+  
+preferences:
+  flash_write_interval: 10min
+
+# Configuration WIFI
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  # networks:
+  #   - ssid: !secret wifi_ssid_apzuzu7
+  #   - password: !secret wifi_pass_apzuzu7
+  #   - ssid: !secret wifi_ssid_apzuzu6
+  #   - password: !secret wifi_pass_apzuzu6
+  #   - ssid: !secret wifi_ssid_3G_zf
+  #   - password: !secret wifi_pass_3G_zf2
+  #   - ssid: !secret wifi_ssid_3G_zf2
+  #   - password: !secret wifi_pass_3G_zf2
+  #   - ssid: !secret wifi_ssid_3g_s7
+  #   - password: !secret wifi_pass_3g_s7
+  #   - ssid: !secret wifi_ssid_apzuzu6_EXT
+  #   - password: !secret wifi_pass_apzuzu6_EXT
+
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: "test-pompe1 Fallback"
+    password: !secret ap_wifi_password
+
+# Enable wifi configuration fallback
+captive_portal:
+
+# Enable logging
+logger:
+#    level: VERBOSE
+
+# Enable Home Assistant API
+api:
+  password: !secret api_password
+
+# Enable OTA updates
+ota:
+  password: !secret ota_password
+
+# Enable WEB Server
+web_server:
+  port: 80
+
+
+
+
+# Configuration 1-wire pour les capteurs de température DS18B20
+dallas:
+  - pin: GPIO14
+    update_interval: 3s
+
+
+# Définition des Switch's
+switch:
+  - platform: gpio
+    name: "test-pompe1 LED"
+    inverted: True
+    id: led
+    pin: GPIO12
+
+  - platform: restart
+    name: "test-pompe1 Restart"
+
+  - platform: template
+    name: "test-pompe1 Priorite Jacuzzi"
+    restore_state: true
+    optimistic: true
+    id: test_pompe1_priorite_jacuzzi
+    on_turn_on:
+    - switch.turn_off: test_pompe1_pompe_state
+    on_turn_off:
+    - switch.turn_off: test_pompe1_pompe_state    
+
+  - platform: template
+    name: "test-pompe1 Regulation manuel"
+    restore_state: true
+    optimistic: true
+    id: test_pompe1_regulation_manuel
+
+  - platform: template
+    name: "test-pompe1 Maintenance Piscine"
+    restore_state: true
+    optimistic: true
+    id: test_pompe1_maintenance_piscine
+    
+  - platform: template
+    name: "test-pompe1 Maintenance Jacuzzi"
+    restore_state: true
+    optimistic: true
+    id: test_pompe1_maintenance_jacuzzi
+    
+  - platform: template
+    name: "test-pompe1 Mode Dual"
+    restore_state: true
+    optimistic: true
+    id: test_pompe1_mode_dual
+    
+  - platform: template
+    name: "test-pompe1 Mode Dual Eco"
+    restore_state: true
+    optimistic: true
+    id: test_pompe1_mode_dual_eco
+
+ 
+
+  - platform: template
+    name: "test-pompe1 Pompe State"
+    restore_state: true
+    optimistic: true
+    id: test_pompe1_pompe_state
+
+  - platform: gpio
+    name: "test-pompe1 pompe1"
+    inverted: True
+    id: test_pompe1_pompe1
+    pin: GPIO0
+
+  - platform: gpio
+    name: "test-pompe1 pompe2"
+    inverted: True
+    id: test_pompe1_pompe2
+    pin: GPIO2
+
+
+# Définition des inputs numbers
+number:
+  - platform: template
+    name: "Température Delta Jacuzzi"
+    restore_value: true
+    optimistic: true
+    min_value: -5
+    max_value: +8
+    step: 0.5
+    initial_value: 3
+    unit_of_measurement: "°C"
+    id: test_pompe1_temperature_delta_jacuzzi
+  
+  - platform: template
+    name: "Température Delta Piscine"
+    restore_value: true
+    optimistic: true
+    min_value: 0
+    max_value: +10
+    step: 1
+    initial_value: 4
+    unit_of_measurement: "°C"
+    id: test_pompe1_temperature_delta_piscine
+
+  - platform: template
+    name: "test-pompe1 Temp Hysterese Jacuzzi"
+    restore_value: true
+    optimistic: true
+    min_value: 0
+    max_value: +5
+    step: 0.5
+    initial_value: 2
+    unit_of_measurement: "°C"
+    id: test_pompe1_temperature_hysterese_jacuzzi
+  
+  - platform: template
+    name: "test-pompe1 Temp Hysterese Piscine"
+    restore_value: true
+    optimistic: true
+    min_value: 0
+    max_value: +5
+    step: 0.5
+    initial_value: 2
+    unit_of_measurement: "°C"
+    id: test_pompe1_temperature_hysterese_piscine
+
+  - platform: template
+    name: "test-pompe1 Température Calibration"
+    restore_value: true
+    optimistic: true
+    min_value: -10
+    max_value: +10
+    step: 0.02
+    initial_value: 1.2
+    unit_of_measurement: "°C"
+    id: test_pompe1_temperature_calibration
+
+  - platform: template
+    name: "test-pompe1 Débit minute"
+    restore_value: true
+    optimistic: true
+    min_value: 0
+    max_value: +10
+    step: 0.1
+    initial_value: 6
+    unit_of_measurement: "l/mn"
+    id: test_pompe1_debit_minute
+
+  - platform: template
+    name: "test-pompe1 Time on Raffraichissement"
+    restore_value: true
+    optimistic: true
+    min_value: 0
+    max_value: +60
+    step: 1
+    initial_value: 10
+    unit_of_measurement: "s"
+    id: test_pompe1_tim_on_raff
+
+  - platform: template
+    name: "test-pompe1 Time off Raffraichissement"
+    restore_value: true
+    optimistic: true
+    min_value: 0
+    max_value: +1200
+    step: 1
+    initial_value: 900
+    unit_of_measurement: "s"
+    id: test_pompe1_tim_off_raff
+
+  - platform: template
+    name: "test-pompe1 Température Max Piscine"
+    restore_value: true
+    optimistic: true
+    min_value: 15
+    max_value: +32
+    step: 1
+    initial_value: 30
+    unit_of_measurement: "°C"
+    id: test_pompe1_temp_max_piscine
+
+  - platform: template
+    name: "test-pompe1 Température Max Jacuzzi"
+    restore_value: true
+    optimistic: true
+    min_value: 25
+    max_value: +42
+    step: 1
+    initial_value: 37
+    unit_of_measurement: "°C"
+    id: test_pompe1_temp_max_jacuzzi
+    
+
+# Définition des sensors
+sensor:
+  - platform: wifi_signal
+    name: "test-pompe1 Signal Wi-Fi"
+    update_interval: 60s
+
+  - platform: uptime
+    name: "test-pompe1 uptime"
+    update_interval: 60s
+
+# Température aller
+  - platform: dallas
+    address: 0xd1020a92465ec628
+    name: "test-pompe1 temp aller"
+    id: test_pompe1_temp_aller
+    filters:
+        - lambda: return ( x - (id(test_pompe1_temperature_calibration).state /2) );
+
+# Température retour (panneaux solaires)
+  - platform: dallas
+    address: 0x3a0309977932c728
+    name: "test-pompe1 temp retour"
+    id: test_pompe1_temp_retour
+    filters:
+        - lambda: return ( x + (id(test_pompe1_temperature_calibration).state /2) );
+
+# Température retour (jacuzzi)
+  - platform: homeassistant
+    name: "test-pompe1 temp piscine"
+    id: test_pompe1_temp_piscine
+    unit_of_measurement: "°C"
+    entity_id: sensor.sonoff_100072683b_temperature
+    
+  - platform: homeassistant
+    name: "test-pompe1 procuction photovoltaique"
+    id: test_pompe1_prod_PV
+    unit_of_measurement: "W"
+    entity_id: sensor.sonoff_1000854a7c_power
+
+# Différence de température en l'aller et le retour (jacuzzi)
+  - platform: template
+    name: "test-pompe1 temp diff_Jacuzzi"
+    id: test_pompe1_temp_diff_jacuzzi
+    unit_of_measurement: "°C"
+    lambda: 'return (id(test_pompe1_temp_retour).state - id(test_pompe1_temp_aller).state);'
+    update_interval: 3s
+
+# Différence de température en l'aller et le retour (Piscine)
+  - platform: template
+    name: "test-pompe1 temp diff_Piscine"
+    id: test_pompe1_temp_diff_piscine
+    unit_of_measurement: "°C"
+    lambda: 'return (id(test_pompe1_temp_retour).state - id(test_pompe1_temp_piscine).state);'
+    update_interval: 3s
+
+# Calcul de la puissance pour un débit donné sur l'interface WEB Jacuzzi
+  - platform: template
+    name: "test-pompe1 power Jacuzzi"
+    id: test_pompe1_power_jacuzzi
+    unit_of_measurement: "kW"
+    lambda: |-
+      if ( id(test_pompe1_pompe_state).state == 1 ) {
+        return ( id(test_pompe1_debit_minute).state / 60 * ( id(test_pompe1_temp_retour).state - id(test_pompe1_temp_aller).state ) * 4.18);
+      } else {
+        return 0.0;
+      }
+    update_interval: 3s
+
+# Calcul de la puissance pour un débit donné sur l'interface WEB Piscine
+  - platform: template
+    name: "test-pompe1 power Piscine"
+    id: test_pompe1_power_piscine
+    unit_of_measurement: "kW"
+    lambda: |-
+      if ( id(test_pompe1_pompe_state).state == 1 ) {
+        return ( id(test_pompe1_debit_minute).state / 60 * ( id(test_pompe1_temp_retour).state - id(test_pompe1_temp_piscine).state ) * 4.18);
+      } else {
+        return 0.0;
+      }
+    update_interval: 3s
+
+
+# Définition des sensors texts
+text_sensor:
+  - platform: version
+    name: "test-pompe1 Version"
+
+  - platform: wifi_info
+    ip_address:
+      name: test-pompe1 IP Address
+      id: wifi_ip
+    ssid:
+      name: test-pompe1 Connected SSID
+      id: wifi_ssid
+
+
+# Gestion des timers
+interval:
+
+# Boucle de régulation
+  - interval: 1s
+    then:
+      - if:
+          condition:
+            lambda: 'return id(test_pompe1_regulation_manuel).state == 0;'
+          then:
+            - if:
+                condition:
+                  lambda: 'return (id(test_pompe1_temp_retour).state - id(test_pompe1_temp_aller).state) > (id(test_pompe1_temperature_delta_jacuzzi).state + id(test_pompe1_temperature_hysterese_jacuzzi).state);'
+                then:
+                  - if:
+                      condition:
+                        lambda: 'return id(test_pompe1_pompe_state).state == 0;'
+                      then:
+                        - logger.log: "La tempéreature Retour est plus HAUTE que la tempéreature Aller, on allume la bonne pompe !"
+                        - switch.turn_on: test_pompe1_pompe_state
+                        - if:
+                            condition:
+                              lambda: 'return id(test_pompe1_priorite_jacuzzi).state == 0;'
+                            then:
+                              - switch.turn_on: test_pompe1_pompe1
+                              - switch.turn_off: test_pompe1_pompe2
+                            else:
+                              - switch.turn_on: test_pompe1_pompe2
+                              - switch.turn_off: test_pompe1_pompe1
+            - if:
+                condition:
+                  lambda: 'return (id(test_pompe1_temp_retour).state - id(test_pompe1_temp_aller).state) < (id(test_pompe1_temperature_delta_jacuzzi).state - id(test_pompe1_temperature_hysterese_jacuzzi).state);'
+                then:
+                  - if:
+                      condition:
+                        lambda: 'return id(test_pompe1_pompe_state).state == 1;'
+                      then:
+                        - logger.log: "La tempéreature Retour est plus BASSE que la tempéreature Aller, on éteint toutes les pompes !"
+                        - switch.turn_off: test_pompe1_pompe_state
+                        - switch.turn_off: test_pompe1_pompe1
+                        - switch.turn_off: test_pompe1_pompe2
+          
+
+# Boucle de réveil pour rafraîchir les mesures de température quand les pompes ne tournent pas, autrement on est aveugle !
+#  - interval: 900s
+#    then:
+#      - if:
+#          condition:
+#            lambda: 'return id(test_pompe1_regulation_manuel).state == 0;'
+#          then:
+#            - if:
+#                condition:
+#                  and:
+#                  lambda: 'return id(test_pompe1_pompe_state).state == 0;'
+#                   sensor.sonoff_1000854a7c_power > 50;
+#                then:
+#                  - switch.turn_on: test_pompe1_regulation_manuel
+#                  - switch.turn_on: test_pompe1_pompe_state
+#                  - switch.turn_on: test_pompe1_pompe1
+#                  - switch.turn_on: test_pompe1_pompe2
+#                  - delay: 10s
+#                  - switch.turn_off: test_pompe1_pompe2
+#                  - switch.turn_off: test_pompe1_pompe1
+#                  - switch.turn_off: test_pompe1_pompe_state
+#                  - switch.turn_off: test_pompe1_regulation_manuel
+
